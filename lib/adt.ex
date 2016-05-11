@@ -1,47 +1,58 @@
 defmodule Adt do
 
-  @doc """
-  This will turn an expresison like: 
-
-    a | b | c | ... | z 
-
-  into a list of atoms like so:
-
-  [:a, :b, :c, ..., :z]
-
-  """
-  def into_list(nil), do: []
-  def into_list({:|, _nothing, [{a, _, _} | [b]]}) do
-    [a |  into_list(b)]
-  end
-  def into_list({a, _, _}) do
-    [a]
-  end
-  def into_list([]) do
-    []
-  end
-  def into_list(other) do
-    IO.puts """
-    ERROR: There was an unexpected symbol in the syntax of this ADT
-
-    These should look like: `defadt do: a | b | c` with nothing else
-    """
-    IO.inspect other
-    nil
-  end
-
-  def convert_to_funcs(name) do
+  
+  # This will convert one name into a bunch of different functions, namely:
+  # 
+  # - one that returns the atom version
+  # - one returns a string version
+  # - one that returns a question version (checking to see if it matches the atom)
+  defp convert_to_funcs(name) do
     name? = String.to_atom("#{name}?")
     name_str = String.to_atom("#{name}_str")
 
     quote do 
-      def unquote(name)(), do: unquote(name)
-      def unquote(name_str)(), do: Atom._to_string unquote(name)
+      def unquote(name)(),               do: unquote(name)
+      def unquote(name_str)(),           do: Atom._to_string unquote(name)
       def unquote(name?)(unquote(name)), do: true
-      def unquote(name?)(_), do: false
+      def unquote(name?)(_),             do: false
     end
   end
 
+  #@doc "A form that belongs in adt_case. It's a replacement for normal case"
+  #defmacro is(type, do: body) do
+  #  quote do
+  #     unquote(type): fn -> unquote(body),
+  #  end
+  #end
+
+  #  @doc "safe version of case?"
+  #defmacro adt_case(adt, do: body) do
+  #
+  #  if body, do
+  #    raise "Pattern matching is not exhaustive"
+  #  end
+  #end
+
+
+  @doc """
+  This will define an ADT. Basically this is an option type that
+  only allow a set amount of options.
+  
+  # Example
+
+  ```
+  defadt :bool, [:true, :false]
+  ```
+
+  will create the following functions:
+  - bool? 
+  - true?
+  - true (returns an atom)
+  - true_str
+  - false? (checks against an atom)
+  - etc.....
+
+  """
   defmacro defadt(option_name, options) do
 
     if options == [] do
@@ -53,6 +64,10 @@ defmodule Adt do
     option_name? = String.to_atom("#{option_name}?")
 
     quote do
+      def unquote(option_name)() do
+        unquote(options)
+      end
+
       def unquote(option_name?)(item) do
         Enum.find(unquote(options), &(item == &1)) != nil
       end
